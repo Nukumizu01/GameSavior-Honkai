@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10161c" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="stylesheet" href="/styles.css?v=20261006-7" />
+    <title>Game Savior 控制台</title>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GAME SAVIOR</p>
+          <h1>云端日常控制台</h1>
+        </div>
+        <div class="topbar-actions">
+          <span id="last-sync" class="muted">尚未同步</span>
+          <button id="refresh-btn" class="icon-button" title="刷新数据" aria-label="刷新数据">↻</button>
+          <button id="logout-btn" class="text-button">退出</button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <aside class="sidebar" aria-label="主导航">
+          <p class="sidebar-title">NAVIGATION</p>
+          <a class="nav-link active" href="/dashboard">控制台</a>
+          <a class="nav-link" href="/settings">脚本设置</a>
+        </aside>
+
+        <main id="app" class="main-content">
+        <section class="status-strip" aria-label="运行状态">
+          <div class="status-item">
+            <span class="status-dot online"></span>
+            <div>
+              <span class="status-label">API</span>
+              <strong id="api-status">检查中</strong>
+            </div>
+          </div>
+          <div class="status-item">
+            <span id="worker-dot" class="status-dot"></span>
+            <div>
+              <span class="status-label">崩铁 Worker</span>
+              <strong id="worker-status">检查中</strong>
+            </div>
+          </div>
+          <div class="status-item">
+            <span class="status-dot accent"></span>
+            <div>
+              <span class="status-label">启用游戏</span>
+              <strong id="enabled-games">读取中</strong>
+            </div>
+          </div>
+          <div class="status-item">
+            <span class="status-dot accent"></span>
+            <div>
+              <span class="status-label">崩铁登录</span>
+              <strong id="starrail-login-status">读取中</strong>
+            </div>
+          </div>
+          <div class="status-item status-item-action">
+            <button id="switch-login-btn" class="secondary-button">切换崩铁登录</button>
+            <button id="feishu-test-btn" class="secondary-button">测试飞书通知</button>
+          </div>
+        </section>
+
+        <section class="page-grid">
+          <div class="primary-column">
+            <section id="qrcode-panel" class="panel qrcode-panel" hidden>
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">CLOUD LOGIN</p>
+                  <h2>崩铁登录二维码</h2>
+                </div>
+                <span id="qrcode-state" class="muted">等待生成</span>
+              </div>
+              <div class="qrcode-content">
+                <img id="qrcode-image" alt="崩铁云游戏登录二维码" />
+                <div>
+                  <p>扫码后，服务器会保存登录状态，后续任务会自动复用。新二维码生成后会自动发送到飞书。</p>
+                  <p id="qrcode-updated" class="muted">网页会自动检查新二维码。</p>
+                  <button id="send-qr-feishu-btn" class="secondary-button qrcode-send-button">发送当前二维码到飞书</button>
+                </div>
+              </div>
+            </section>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">TASK CENTER</p>
+                <h2>任务</h2>
+              </div>
+              <button id="new-task-btn" class="primary-button">＋ 运行崩铁日常</button>
+            </div>
+
+            <div id="task-list" class="task-list"></div>
+            <div id="task-empty" class="empty-state" hidden>
+              <strong>还没有运行记录</strong>
+              <span>创建一次崩铁日常任务后，状态和日志会显示在这里。</span>
+            </div>
+          </div>
+
+          <aside class="side-column">
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">SCHEDULE</p>
+                  <h2>崩铁运行设置</h2>
+                </div>
+                <span id="config-state" class="muted">未读取</span>
+              </div>
+              <form id="config-form" class="form-grid">
+                <label>
+                  <span>每日时间</span>
+                  <input id="schedule-time" type="time" value="12:20" required />
+                </label>
+                <label>
+                  <span>时区</span>
+                  <select id="timezone">
+                    <option value="Asia/Shanghai">Asia/Shanghai</option>
+                    <option value="Asia/Singapore">Asia/Singapore</option>
+                    <option value="UTC">UTC</option>
+                  </select>
+                </label>
+                <label>
+                  <span>超时（分钟）</span>
+                  <input id="timeout-minutes" type="number" min="1" max="360" value="60" />
+                </label>
+                <label>
+                  <span>失败重试次数</span>
+                  <input id="max-retries" type="number" min="0" max="5" value="1" />
+                </label>
+                <label>
+                  <span>重试间隔（分钟）</span>
+                  <input id="retry-delay" type="number" min="1" max="1440" value="10" />
+                </label>
+                <label>
+                  <span>截图策略</span>
+                  <select id="screenshot-policy">
+                    <option value="failure_only">仅失败时</option>
+                    <option value="all">全部保存</option>
+                    <option value="none">不保存</option>
+                  </select>
+                </label>
+                <label class="toggle-row full-width">
+                  <span>启用每日自动运行</span>
+                  <input id="schedule-enabled" type="checkbox" checked />
+                </label>
+                <button class="secondary-button full-width" type="submit">保存运行设置</button>
+              </form>
+            </section>
+
+            <section class="panel worker-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">WORKER</p>
+                  <h2>执行节点</h2>
+                </div>
+              </div>
+              <div id="worker-detail" class="worker-detail">
+                <span class="muted">读取中</span>
+              </div>
+            </section>
+          </aside>
+        </section>
+        </main>
+      </div>
+
+    </div>
+
+    <dialog id="task-dialog" class="dialog">
+      <form method="dialog" class="dialog-content">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">NEW RUN</p>
+            <h2>运行崩铁日常</h2>
+          </div>
+          <button class="icon-button" value="cancel" title="关闭" aria-label="关闭">×</button>
+        </div>
+        <p class="muted">任务会由服务器上的 March7th Worker 执行。</p>
+        <label>
+          <span>任务来源</span>
+          <select id="task-source">
+            <option value="manual">手动运行</option>
+            <option value="manual_test">测试运行</option>
+          </select>
+        </label>
+        <div class="dialog-actions">
+          <button class="secondary-button" value="cancel">取消</button>
+          <button id="confirm-task-btn" class="primary-button" value="default">创建任务</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="detail-dialog" class="dialog detail-dialog">
+      <div class="dialog-content">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">TASK DETAIL</p>
+            <h2 id="detail-title">任务详情</h2>
+          </div>
+          <button id="close-detail-btn" class="icon-button" title="关闭" aria-label="关闭">×</button>
+        </div>
+        <div id="detail-summary" class="detail-summary"></div>
+        <div class="log-heading">
+          <h3>运行日志</h3>
+          <span id="log-state" class="muted">读取中</span>
+        </div>
+        <div id="event-list" class="event-list"></div>
+        <div class="log-heading artifact-heading">
+          <h3>运行附件</h3>
+          <span id="artifact-state" class="muted">读取中</span>
+        </div>
+        <div id="artifact-list" class="artifact-list"></div>
+      </div>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js?v=20261006-8" defer></script>
+  </body>
+</html>

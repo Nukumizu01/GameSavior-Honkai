@@ -1,0 +1,40 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime data
+data/
+worker_logs/
+outputs/
+starrail/config.yaml
+starrail/config.yaml.*
+starrail/logs/
+starrail/UserProfile/
+starrail/control/*
+!starrail/control/.gitkeep
+
+# Packages and temporary files
+*.zip
+*.tar
+*.tar.gz
+*.log
+*.pid
+*.tmp
+*.bak
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10161c" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="stylesheet" href="/styles.css?v=20261006-8" />
+    <title>脚本设置 · Game Savior</title>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GAME SAVIOR</p>
+          <h1>脚本设置</h1>
+        </div>
+        <div class="topbar-actions">
+          <span id="settings-state" class="muted">读取中</span>
+          <a class="text-button topbar-link" href="/dashboard">返回控制台</a>
+          <button id="logout-btn" class="text-button">退出</button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <aside class="sidebar" aria-label="主导航">
+          <p class="sidebar-title">NAVIGATION</p>
+          <a class="nav-link" href="/dashboard">控制台</a>
+          <button
+            id="settings-nav-toggle"
+            class="nav-link nav-link-expand active"
+            type="button"
+            aria-expanded="true"
+            aria-controls="settings-directory"
+          >
+            <span>脚本设置</span>
+            <span class="nav-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <nav id="settings-directory" class="settings-directory" aria-label="脚本设置目录"></nav>
+        </aside>
+
+        <main class="main-content settings-content">
+          <div class="settings-toolbar">
+            <div>
+              <p class="eyebrow">MARCH7THASSISTANT</p>
+              <h2>崩铁脚本设置</h2>
+              <p class="muted settings-description">
+                选项按 March7thAssistant 的设置分类整理。设置会在下一次任务启动时应用到 Worker。
+              </p>
+            </div>
+            <div class="settings-toolbar-actions">
+              <select id="script-game" aria-label="选择游戏">
+                <option value="starrail">崩铁 · March7thAssistant</option>
+                <option value="genshin" disabled>原神 · 暂未启用</option>
+              </select>
+              <button id="reset-settings-btn" class="secondary-button" type="button">恢复本页默认</button>
+            </div>
+          </div>
+
+          <form id="script-settings-form">
+            <div id="script-settings-groups" class="settings-groups">
+              <div class="loading-state">正在读取脚本设置</div>
+            </div>
+            <div class="settings-footer">
+              <span class="form-hint">账号、密码、Cookies、机器人密钥和本机路径不会在此页面开放。</span>
+              <button class="primary-button" type="submit">保存脚本设置</button>
+            </div>
+          </form>
+        </main>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/settings.js?v=20261006-2" defer></script>
+  </body>
+</html>

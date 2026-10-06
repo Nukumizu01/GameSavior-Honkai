@@ -1,0 +1,9 @@
+{
+  "name": "Game Savior 控制台",
+  "short_name": "Game Savior",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d1217",
+  "theme_color": "#10161c",
+  "lang": "zh-CN"
+}

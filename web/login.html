@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10161c" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="stylesheet" href="/styles.css" />
+    <title>登录 | Game Savior</title>
+  </head>
+  <body>
+    <div class="login-view">
+      <div class="login-panel">
+        <p class="eyebrow">PRIVATE CONSOLE</p>
+        <h1>登录控制台</h1>
+        <p class="login-copy">登录后管理云端日常任务、运行日志和定时设置。</p>
+        <form id="login-form" class="login-form">
+          <label>
+            <span>用户名</span>
+            <input id="username" autocomplete="username" required autofocus />
+          </label>
+          <label>
+            <span>密码</span>
+            <input id="password" type="password" autocomplete="current-password" required />
+          </label>
+          <p id="login-error" class="login-error" hidden></p>
+          <button class="primary-button" type="submit">登录</button>
+        </form>
+      </div>
+    </div>
+    <script src="/login.js" defer></script>
+  </body>
+</html>

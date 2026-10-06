@@ -1,0 +1,22 @@
+ARG MARCH7TH_IMAGE=ghcr.io/moesnow/march7thassistant:latest
+FROM ${MARCH7TH_IMAGE}
+
+ARG PIP_INDEX_URL=https://pypi.org/simple
+
+WORKDIR /m7a
+
+COPY requirements.worker.txt /tmp/requirements.worker.txt
+RUN SITE_PACKAGES="$(/opt/venv/bin/python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')" \
+    && /usr/local/bin/pip install --no-cache-dir --target "${SITE_PACKAGES}" --index-url "${PIP_INDEX_URL}" -r /tmp/requirements.worker.txt
+
+COPY workers /opt/game-automation-console/workers
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/opt/game-automation-console
+ENV MARCH7TH_DOCKER_STARTED=true
+ENV MARCH7TH_CLOUD_GAME_ENABLE=true
+ENV MARCH7TH_BROWSER_HEADLESS_ENABLE=true
+ENV MARCH7TH_BROWSER_HEADLESS_RESTART_ON_NOT_LOGGED_IN=false
+ENV MARCH7TH_AFTER_FINISH=Exit
+
+CMD ["python", "/opt/game-automation-console/workers/starrail_worker.py"]

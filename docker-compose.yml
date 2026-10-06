@@ -1,0 +1,84 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PYTHON_IMAGE: ${API_IMAGE:-python:3.12-slim}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+    env_file:
+      - .env
+    environment:
+      STARRAIL_LOG_DIR: /app/starrail-logs
+      STARRAIL_CONTROL_DIR: /app/starrail-control
+      TZ: ${TZ:-Asia/Shanghai}
+    ports:
+      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-8080}:8080"
+    volumes:
+      - ./data:/app/data
+      - ./starrail/logs:/app/starrail-logs:ro
+      - ./starrail/control:/app/starrail-control
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/docs', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  starrail-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.starrail-worker
+      args:
+        MARCH7TH_IMAGE: ${MARCH7TH_IMAGE:-ghcr.io/moesnow/march7thassistant:latest}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+    env_file:
+      - .env
+    environment:
+      APP_BASE_URL: http://api:8080
+      STARRAIL_WORKDIR: /m7a
+      STARRAIL_COMMAND: python main.py main
+      WORKER_LOG_DIR: /worker_logs
+      MARCH7TH_DOCKER_STARTED: "true"
+      MARCH7TH_CLOUD_GAME_ENABLE: "true"
+      MARCH7TH_BROWSER_HEADLESS_ENABLE: "true"
+      MARCH7TH_BROWSER_HEADLESS_RESTART_ON_NOT_LOGGED_IN: "false"
+      MARCH7TH_AFTER_FINISH: Exit
+      MARCH7TH_LOG_LEVEL: INFO
+      STARRAIL_CONTROL_DIR: /m7a/control
+      STARRAIL_LOGIN_PROFILE_DIR: /m7a/3rdparty/WebBrowser/UserProfile
+      STARRAIL_LOGIN_QR_PATH: /m7a/logs/qrcode_login.png
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - ./starrail/config.yaml:/m7a/config.yaml
+      - ./starrail/logs:/m7a/logs
+      - ./starrail/control:/m7a/control
+      - ./starrail/UserProfile:/m7a/3rdparty/WebBrowser/UserProfile
+      - ./data/worker_logs:/worker_logs
+    shm_size: "1g"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    profiles: ["https"]
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,1 @@
+"""Game automation console backend."""
