@@ -260,12 +260,25 @@ async def send_starrail_login_qr(
         raise HTTPException(status_code=400, detail="Login QR image is empty")
     if len(content) > 2 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Login QR image is too large")
+
+    # The API stores an independent copy for the dashboard.  Keeping it apart
+    # from the worker's watched file prevents its own write from triggering a
+    # duplicate upload and notification.
+    qr_path = get_settings().starrail_login_qr_path
+    qr_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = qr_path.with_suffix(".png.tmp")
+    try:
+        temporary_path.write_bytes(content)
+        temporary_path.replace(qr_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
     ok = send_feishu_image(
         content,
         file.filename or "starrail-login-qr.png",
         event_type="starrail_login_qr",
     )
-    return {"ok": ok}
+    return {"ok": ok, "updated_at": iso()}
 
 
 @router.post("/runs/{run_id}/finish")

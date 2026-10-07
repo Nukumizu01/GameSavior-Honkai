@@ -17,7 +17,7 @@ router = APIRouter(prefix="/starrail", tags=["starrail"])
 
 
 def _qr_path():
-    return get_settings().starrail_log_dir / "qrcode_login.png"
+    return get_settings().starrail_login_qr_path
 
 
 def _control_dir() -> Path:

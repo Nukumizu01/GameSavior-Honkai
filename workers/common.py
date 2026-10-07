@@ -331,9 +331,7 @@ class WorkerClient:
         try:
             status = json.loads(status_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
-            return
-        if status.get("status") != "ready_for_scan":
-            return
+            status = {}
 
         qr_stat = self.login_qr_path.stat()
         signature = f"{qr_stat.st_mtime_ns}:{qr_stat.st_size}"
@@ -341,16 +339,6 @@ class WorkerClient:
             return
         if self.login_qr_signature == signature:
             return
-        self.login_qr_signature = signature
-        try:
-            requested_at = datetime.fromisoformat(
-                str(status.get("requested_at", "")).replace("Z", "+00:00")
-            ).timestamp()
-            if qr_stat.st_mtime <= requested_at:
-                return
-        except (TypeError, ValueError, OSError):
-            pass
-
         last_attempt = status.get("qr_last_attempt_at")
         if last_attempt:
             try:
@@ -358,6 +346,7 @@ class WorkerClient:
                     return
             except ValueError:
                 pass
+        self.login_qr_signature = signature
 
         try:
             with self.login_qr_path.open("rb") as fh:

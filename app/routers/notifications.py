@@ -27,7 +27,7 @@ def test_notification(_: dict = Depends(require_user)):
 @router.post("/notifications/test-login-qr")
 def test_login_qr(_: dict = Depends(require_user)):
     settings = get_settings()
-    path = settings.starrail_log_dir / "qrcode_login.png"
+    path = settings.starrail_login_qr_path
     if not path.is_file():
         return {"ok": False, "detail": "当前没有可发送的崩铁登录二维码"}
     ok = send_feishu_image(

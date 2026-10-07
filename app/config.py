@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     starrail_command: str | None = None
     starrail_workdir: Path | None = None
     starrail_log_dir: Path = Path("./starrail/logs")
+    starrail_login_qr_path: Path = Path("./data/starrail/qrcode_login.png")
     starrail_control_dir: Path = Path("./starrail/control")
     worker_poll_seconds: int = 10
 
