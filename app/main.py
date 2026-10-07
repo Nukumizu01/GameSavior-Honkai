@@ -56,7 +56,10 @@ def create_app() -> FastAPI:
     @app.get("/settings", include_in_schema=False)
     def settings_page(session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME)):
         return (
-            FileResponse(web_dir / "settings.html", headers={"Cache-Control": "no-store"})
+            FileResponse(
+                web_dir / "settings.html",
+                headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
+            )
             if session_cookie
             else RedirectResponse("/login", status_code=303)
         )

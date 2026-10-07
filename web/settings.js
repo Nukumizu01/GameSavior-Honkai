@@ -217,13 +217,20 @@ function buildScriptSettings(overrides) {
 }
 
 async function load() {
-  const [config, schema] = await Promise.all([
-    api("/games/starrail/config"),
-    api("/games/starrail/script-schema"),
-  ]);
-  state.config = config;
-  state.schema = schema;
-  renderSettings();
+  try {
+    const [config, schema] = await Promise.all([
+      api("/games/starrail/config"),
+      api("/games/starrail/script-schema"),
+    ]);
+    state.config = config;
+    state.schema = schema;
+    renderSettings();
+  } catch (error) {
+    $("#settings-state").textContent = "读取失败";
+    $("#script-settings-groups").innerHTML =
+      `<div class="empty-state">${escapeHtml(error.message || "脚本设置读取失败")}</div>`;
+    throw error;
+  }
 }
 
 $("#script-settings-form").addEventListener("submit", async (event) => {
