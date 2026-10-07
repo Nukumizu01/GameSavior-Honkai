@@ -10,6 +10,25 @@ from app.security import hash_token, iso
 SESSION_COOKIE_NAME = "game_console_session"
 
 
+def get_session_user(token: str | None) -> dict | None:
+    if not token:
+        return None
+    with connect() as con:
+        row = con.execute(
+            """
+            SELECT users.*
+            FROM sessions
+            JOIN users ON users.id = sessions.user_id
+            WHERE sessions.token_hash = ?
+              AND sessions.revoked_at IS NULL
+              AND sessions.expires_at > ?
+              AND users.is_active = 1
+            """,
+            (hash_token(token), iso()),
+        ).fetchone()
+        return row_to_dict(row)
+
+
 def require_user(
     authorization: str | None = Header(default=None),
     session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),

@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.db import init_db
-from app.deps import SESSION_COOKIE_NAME
+from app.deps import SESSION_COOKIE_NAME, get_session_user
 from app.routers import auth, dashboard, games, notifications, runs, starrail, tasks, worker
 from app.scheduler import scheduler_loop
 
@@ -35,21 +35,22 @@ def create_app() -> FastAPI:
 
     @app.get("/", include_in_schema=False)
     def root(session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME)):
-        return RedirectResponse("/dashboard" if session_cookie else "/login", status_code=303)
+        return RedirectResponse(
+            "/dashboard" if get_session_user(session_cookie) else "/login",
+            status_code=303,
+        )
 
     @app.get("/login", include_in_schema=False)
     def login_page(session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME)):
-        return (
-            RedirectResponse("/dashboard", status_code=303)
-            if session_cookie
-            else FileResponse(web_dir / "login.html", headers={"Cache-Control": "no-store"})
-        )
+        if get_session_user(session_cookie):
+            return RedirectResponse("/dashboard", status_code=303)
+        return FileResponse(web_dir / "login.html", headers={"Cache-Control": "no-store"})
 
     @app.get("/dashboard", include_in_schema=False)
     def dashboard_page(session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME)):
         return (
             FileResponse(web_dir / "index.html", headers={"Cache-Control": "no-store"})
-            if session_cookie
+            if get_session_user(session_cookie)
             else RedirectResponse("/login", status_code=303)
         )
 
@@ -60,7 +61,7 @@ def create_app() -> FastAPI:
                 web_dir / "settings.html",
                 headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
             )
-            if session_cookie
+            if get_session_user(session_cookie)
             else RedirectResponse("/login", status_code=303)
         )
 
@@ -71,7 +72,7 @@ def create_app() -> FastAPI:
     ):
         return (
             FileResponse(web_dir / "index.html", headers={"Cache-Control": "no-store"})
-            if session_cookie
+            if get_session_user(session_cookie)
             else RedirectResponse("/login", status_code=303)
         )
 
