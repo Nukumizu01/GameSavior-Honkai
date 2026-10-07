@@ -17,7 +17,9 @@ function showToast(message, isError = false) {
 }
 
 function goToLogin() {
-  window.location.replace("/login");
+  if (window.location.pathname !== "/login") {
+    window.location.replace("/login");
+  }
 }
 
 async function api(path, options = {}) {
@@ -233,6 +235,17 @@ async function load() {
   }
 }
 
+async function start() {
+  try {
+    await api("/auth/me");
+    await load();
+  } catch (error) {
+    if (!error.message.includes("登录已失效")) {
+      $("#settings-state").textContent = "读取失败";
+    }
+  }
+}
+
 $("#script-settings-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const button = event.submitter;
@@ -285,7 +298,4 @@ $("#logout-btn").addEventListener("click", async () => {
   goToLogin();
 });
 
-load().catch((error) => {
-  $("#settings-state").textContent = "读取失败";
-  $("#script-settings-groups").innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
-});
+start();
