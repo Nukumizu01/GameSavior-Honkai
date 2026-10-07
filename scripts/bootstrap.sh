@@ -49,6 +49,10 @@ mkdir -p data/artifacts data/worker_logs starrail/logs starrail/control starrail
 
 if [ ! -s starrail/config.yaml ]; then
     temporary_config=starrail/.config.yaml.download
+    cleanup_config() {
+        rm -f "$temporary_config"
+    }
+    trap cleanup_config EXIT INT TERM
     rm -f "$temporary_config"
     if command -v curl >/dev/null 2>&1; then
         curl -fsSL "$CONFIG_URL" -o "$temporary_config"
@@ -59,6 +63,7 @@ if [ ! -s starrail/config.yaml ]; then
         exit 1
     fi
     mv "$temporary_config" starrail/config.yaml
+    trap - EXIT INT TERM
     sed -i 's/^cloud_game_enable:.*/cloud_game_enable: true/' starrail/config.yaml
     sed -i 's/^browser_headless_enable:.*/browser_headless_enable: true/' starrail/config.yaml
     sed -i 's/^browser_persistent_enable:.*/browser_persistent_enable: true/' starrail/config.yaml

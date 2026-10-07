@@ -102,8 +102,11 @@ def request_login_switch(_: dict = Depends(require_user)):
         "requested_at": iso(),
     }
     temporary_path = control_dir / f".{request_path.name}.{request['request_id']}.tmp"
-    temporary_path.write_text(json.dumps(request, ensure_ascii=False), encoding="utf-8")
-    temporary_path.replace(request_path)
+    try:
+        temporary_path.write_text(json.dumps(request, ensure_ascii=False), encoding="utf-8")
+        temporary_path.replace(request_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
     return {"ok": True, "status": "pending", **request}
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import os
 from typing import Any
 
 
@@ -11,6 +12,22 @@ SCRIPT_BASE_DEFAULTS: dict[str, Any] = {
     "after_finish": "Exit",
     "log_level": "INFO",
 }
+
+
+def _instance_options() -> list[dict[str, str]]:
+    """Allow deployments to extend instance names without changing the UI code."""
+    configured = os.getenv("MARCH7TH_INSTANCE_OPTIONS", "")
+    values = [item.strip() for item in configured.split(",") if item.strip()]
+    if not values:
+        values = [
+            "拟造花萼（金）",
+            "拟造花萼（赤）",
+            "凝滞虚影",
+            "侵蚀隧洞",
+            "饰品提取",
+            "历战余响",
+        ]
+    return [{"label": value, "value": value} for value in values]
 
 
 def _field(
@@ -45,13 +62,14 @@ SCRIPT_SETTING_GROUPS: list[dict[str, Any]] = [
                 "副本类型",
                 "select",
                 "侵蚀隧洞",
-                options=[
-                    {"label": "拟造花萼（金）", "value": "拟造花萼（金）"},
-                    {"label": "拟造花萼（赤）", "value": "拟造花萼（赤）"},
-                    {"label": "凝滞虚影", "value": "凝滞虚影"},
-                    {"label": "侵蚀隧洞", "value": "侵蚀隧洞"},
-                    {"label": "饰品提取", "value": "饰品提取"},
-                ],
+                options=_instance_options(),
+            ),
+            _field(
+                "instance_name",
+                "副本名称/目标",
+                "text",
+                "",
+                "按脚本显示的副本名称填写；留空时使用副本类型默认目标。",
             ),
             _field("tp_before_instance", "清体力前传送至任意锚点", "boolean", False),
             _field("use_reserved_trailblaze_power", "使用后备开拓力", "boolean", False),

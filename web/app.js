@@ -1,6 +1,7 @@
 const state = {
   dashboard: null,
   tasks: [],
+  taskPagination: { page: 1, pageSize: 10, total: 0, totalPages: 1 },
   config: null,
   selectedTask: null,
   refreshTimer: null,
@@ -113,9 +114,11 @@ function renderLoginStatus(qr = null) {
 function renderTasks() {
   const list = $("#task-list");
   const empty = $("#task-empty");
+  const pagination = $("#task-pagination");
   if (!state.tasks.length) {
     list.innerHTML = "";
     empty.hidden = false;
+    pagination.hidden = true;
     return;
   }
   empty.hidden = true;
@@ -144,6 +147,14 @@ function renderTasks() {
       </article>
     `;
   }).join("");
+  const { page, pageSize, total, totalPages } = state.taskPagination;
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, total);
+  $("#task-pagination-summary").textContent = `显示 ${start}-${end} 条，共 ${total} 条`;
+  $("#task-page-indicator").textContent = `第 ${page} / ${totalPages} 页`;
+  $("#task-prev-page").disabled = page <= 1;
+  $("#task-next-page").disabled = page >= totalPages;
+  pagination.hidden = totalPages <= 1;
 }
 
 function renderConfig() {
@@ -267,13 +278,19 @@ function escapeHtml(value) {
 async function loadData() {
   const [dashboard, tasks, config, qr, loginSwitch] = await Promise.all([
     api("/dashboard"),
-    api("/tasks?game=starrail&limit=50"),
+    api(`/tasks?game=starrail&page=${state.taskPagination.page}&page_size=${state.taskPagination.pageSize}`),
     api("/games/starrail/config"),
     api("/starrail/login-qr/status"),
     api("/starrail/login-switch/status"),
   ]);
   state.dashboard = dashboard;
   state.tasks = tasks.tasks || [];
+  state.taskPagination = {
+    page: tasks.page || 1,
+    pageSize: tasks.page_size || state.taskPagination.pageSize,
+    total: tasks.total || 0,
+    totalPages: tasks.total_pages || 1,
+  };
   state.config = config;
   state.loginSwitch = loginSwitch;
   renderDashboard();
@@ -411,6 +428,18 @@ $("#task-list").addEventListener("click", (event) => {
   if (button.classList.contains("task-detail-btn")) openTaskDetail(taskId);
   if (button.classList.contains("task-cancel-btn")) cancelTask(taskId);
   if (button.classList.contains("task-retry-btn")) retryTask(taskId);
+});
+
+$("#task-prev-page").addEventListener("click", async () => {
+  if (state.taskPagination.page <= 1) return;
+  state.taskPagination.page -= 1;
+  try { await loadData(); } catch (error) { showToast(error.message, true); }
+});
+
+$("#task-next-page").addEventListener("click", async () => {
+  if (state.taskPagination.page >= state.taskPagination.totalPages) return;
+  state.taskPagination.page += 1;
+  try { await loadData(); } catch (error) { showToast(error.message, true); }
 });
 
 $("#config-form").addEventListener("submit", async (event) => {

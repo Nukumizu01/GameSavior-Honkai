@@ -49,7 +49,8 @@ def create_task(body: TaskCreate, _: dict = Depends(require_user)):
 def list_tasks(
     game: str | None = None,
     status: str | None = None,
-    limit: int = Query(default=50, ge=1, le=200),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
     _: dict = Depends(require_user),
 ):
     clauses = []
@@ -62,8 +63,29 @@ def list_tasks(
         params.append(status)
     where = "WHERE " + " AND ".join(clauses) if clauses else ""
     with connect() as con:
-        rows = con.execute(f"SELECT * FROM tasks {where} ORDER BY created_at DESC LIMIT ?", (*params, limit)).fetchall()
-        return {"tasks": [dict(r) for r in rows]}
+        total = con.execute(
+            f"SELECT COUNT(*) AS count FROM tasks {where}",
+            tuple(params),
+        ).fetchone()["count"]
+        total_pages = max(1, (total + page_size - 1) // page_size)
+        page = min(page, total_pages)
+        offset = (page - 1) * page_size
+        rows = con.execute(
+            f"""
+            SELECT * FROM tasks
+            {where}
+            ORDER BY created_at DESC, id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (*params, page_size, offset),
+        ).fetchall()
+        return {
+            "tasks": [dict(r) for r in rows],
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": total_pages,
+        }
 
 
 @router.get("/{task_id}")

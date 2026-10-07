@@ -25,7 +25,7 @@ load_dotenv(
 
 
 SAFE_CONFIG_KEYS = {
-    "power_enable", "instance_type", "tp_before_instance", "use_reserved_trailblaze_power",
+    "power_enable", "instance_type", "instance_name", "tp_before_instance", "use_reserved_trailblaze_power",
     "use_fuel", "merge_immersifier", "build_target_enable", "build_target_scheme",
     "echo_of_war_enable", "borrow_enable", "borrow_character_enable", "borrow_scroll_times",
     "daily_enable", "daily_material_enable", "daily_himeko_try_enable", "daily_memory_one_enable",
@@ -193,8 +193,22 @@ class WorkerClient:
         self.control_dir.mkdir(parents=True, exist_ok=True)
         status_path = self.control_dir / "switch_login.status.json"
         temporary_path = self.control_dir / f".{status_path.name}.tmp"
-        temporary_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-        temporary_path.replace(status_path)
+        try:
+            temporary_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            temporary_path.replace(status_path)
+        finally:
+            temporary_path.unlink(missing_ok=True)
+
+    @staticmethod
+    def _cleanup_temporary_files(directory: Path) -> None:
+        if not directory.is_dir():
+            return
+        for path in directory.glob(".*.tmp"):
+            try:
+                if path.is_file() or path.is_symlink():
+                    path.unlink(missing_ok=True)
+            except OSError as exc:
+                print(f"[worker] temporary file cleanup failed for {path}: {exc}")
 
     def _clear_login_profile(self) -> int:
         if not self.login_profile_dir:
@@ -265,6 +279,8 @@ class WorkerClient:
                     config_path.write_text(temporary_path.read_text(encoding="utf-8"), encoding="utf-8")
                     temporary_path.unlink(missing_ok=True)
                     print(f"[worker] atomic config replace unavailable; wrote in place: {replace_error}")
+                finally:
+                    temporary_path.unlink(missing_ok=True)
                 print(f"[worker] updated script config: {', '.join(sorted(changed))}")
         except Exception as exc:
             print(f"[worker] script config update failed: {exc}")
@@ -272,6 +288,7 @@ class WorkerClient:
     def process_control_commands(self) -> None:
         if not self.control_dir:
             return
+        self._cleanup_temporary_files(self.control_dir)
         request_path = self.control_dir / "switch_login.json"
         if not request_path.is_file():
             return
