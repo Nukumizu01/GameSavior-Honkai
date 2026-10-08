@@ -38,6 +38,7 @@ services:
     environment:
       APP_BASE_URL: http://api:8080
       STARRAIL_WORKDIR: /m7a
+      STARRAIL_CONFIG_SOURCE_PATH: /m7a-config/config.yaml
       STARRAIL_COMMAND: python main.py main
       WORKER_LOG_DIR: /worker_logs
       MARCH7TH_DOCKER_STARTED: "true"
@@ -51,7 +52,7 @@ services:
       STARRAIL_LOGIN_QR_PATH: /m7a/logs/qrcode_login.png
       TZ: ${TZ:-Asia/Shanghai}
     volumes:
-      - ./starrail/config.yaml:/m7a/config.yaml
+      - ./starrail:/m7a-config
       - ./starrail/logs:/m7a/logs
       - ./starrail/control:/m7a/control
       - ./starrail/UserProfile:/m7a/3rdparty/WebBrowser/UserProfile

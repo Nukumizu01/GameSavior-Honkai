@@ -25,6 +25,7 @@ services:
     environment:
       APP_BASE_URL: http://api:8080
       STARRAIL_WORKDIR: /m7a
+      STARRAIL_CONFIG_SOURCE_PATH: /m7a-config/config.yaml
       # main runs the complete March7thAssistant flow: power, daily training,
       # rewards and other enabled modules.
       STARRAIL_COMMAND: python main.py main
@@ -39,7 +40,7 @@ services:
       STARRAIL_LOGIN_PROFILE_DIR: /m7a/3rdparty/WebBrowser/UserProfile
       STARRAIL_LOGIN_QR_PATH: /m7a/logs/qrcode_login.png
     volumes:
-      - ./starrail/config.yaml:/m7a/config.yaml
+      - ./starrail:/m7a-config
       - ./starrail/logs:/m7a/logs
       - ./starrail/control:/m7a/control
       - ./starrail/UserProfile:/m7a/3rdparty/WebBrowser/UserProfile

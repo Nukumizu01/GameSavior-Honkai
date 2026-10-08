@@ -51,6 +51,15 @@ SAFE_CONFIG_KEYS = {
     "auto_set_resolution_enable", "auto_set_game_path_enable", "use_background_screenshot",
 }
 
+INSTANCE_NAME_CONFIG_KEYS = {
+    "instance_name_calyx_golden": "拟造花萼（金）",
+    "instance_name_calyx_crimson": "拟造花萼（赤）",
+    "instance_name_stagnant_shadow": "凝滞虚影",
+    "instance_name_cavern": "侵蚀隧洞",
+    "instance_name_ornament": "饰品提取",
+    "instance_name_echo_of_war": "历战余响",
+}
+
 
 class WorkerClient:
     SCRIPT_FAILURE_MARKERS = (
@@ -94,6 +103,11 @@ class WorkerClient:
         self.login_qr_path = (
             Path(os.getenv(login_qr_path_env, "")).expanduser()
             if login_qr_path_env and os.getenv(login_qr_path_env)
+            else None
+        )
+        self.config_source_path = (
+            Path(os.getenv("STARRAIL_CONFIG_SOURCE_PATH", "")).expanduser()
+            if os.getenv("STARRAIL_CONFIG_SOURCE_PATH")
             else None
         )
         self.runtime_env = runtime_env or {}
@@ -242,10 +256,13 @@ class WorkerClient:
             "log_level": script_settings.get("log_level", "DEBUG"),
         }
         custom_overrides = script_settings.get("config_overrides", {})
+        instance_name_overrides: dict[str, str] = {}
         if isinstance(custom_overrides, dict):
             for key, value in custom_overrides.items():
                 if str(key) in SAFE_CONFIG_KEYS and isinstance(value, (bool, int, float, str)):
                     overrides[str(key)] = value
+                elif str(key) in INSTANCE_NAME_CONFIG_KEYS and isinstance(value, str):
+                    instance_name_overrides[INSTANCE_NAME_CONFIG_KEYS[str(key)]] = value
 
         try:
             document = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
@@ -256,6 +273,15 @@ class WorkerClient:
                 if document.get(key) != value:
                     document[key] = value
                     changed.add(key)
+            if instance_name_overrides:
+                instance_names = document.setdefault("instance_names", {})
+                if not isinstance(instance_names, dict):
+                    instance_names = {}
+                    document["instance_names"] = instance_names
+                for instance_type, instance_name in instance_name_overrides.items():
+                    if instance_names.get(instance_type) != instance_name:
+                        instance_names[instance_type] = instance_name
+                        changed.add(f"instance_names.{instance_type}")
             if changed:
                 backup_path = config_path.with_suffix(".yaml.bak")
                 if not backup_path.exists():
@@ -281,9 +307,40 @@ class WorkerClient:
                     print(f"[worker] atomic config replace unavailable; wrote in place: {replace_error}")
                 finally:
                     temporary_path.unlink(missing_ok=True)
-                print(f"[worker] updated script config: {', '.join(sorted(changed))}")
+            print(f"[worker] updated script config: {', '.join(sorted(changed))}")
         except Exception as exc:
             print(f"[worker] script config update failed: {exc}")
+
+    def _sync_config_from_source(self) -> None:
+        """Copy the host-persisted config into a regular container file.
+
+        A single-file Docker bind mount cannot be replaced with os.replace;
+        March7thAssistant saves config.yaml during normal tasks.  Keeping the
+        working copy inside the container lets that save remain atomic.
+        """
+        if not self.config_source_path or not self.workdir:
+            return
+        target = self.workdir / "config.yaml"
+        try:
+            if self.config_source_path.is_file():
+                shutil.copy2(self.config_source_path, target)
+            elif target.is_file():
+                self.config_source_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(target, self.config_source_path)
+        except OSError as exc:
+            print(f"[worker] config sync from source failed: {exc}")
+
+    def _sync_config_to_source(self) -> None:
+        if not self.config_source_path or not self.workdir:
+            return
+        target = self.workdir / "config.yaml"
+        if not target.is_file():
+            return
+        try:
+            self.config_source_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(target, self.config_source_path)
+        except OSError as exc:
+            print(f"[worker] config sync to source failed: {exc}")
 
     def process_control_commands(self) -> None:
         if not self.control_dir:
@@ -483,6 +540,7 @@ class WorkerClient:
             )
             return
 
+        self._sync_config_from_source()
         self.log_dir.mkdir(parents=True, exist_ok=True)
         log_path = self.log_dir / f"{self.worker_key}-{run_id}.log"
         env = os.environ.copy()
@@ -620,6 +678,7 @@ class WorkerClient:
 
         duration_ms = int((time.monotonic() - started_at) * 1000)
         script_result = self._analyze_script_result(log_path)
+        self._sync_config_to_source()
         if cancelled:
             self.finish(
                 run_id,
