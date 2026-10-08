@@ -1,5 +1,6 @@
 ARG PYTHON_IMAGE=python:3.12-slim
-FROM node:22-alpine AS frontend-build
+ARG FRONTEND_IMAGE=node:22-alpine
+FROM ${FRONTEND_IMAGE} AS frontend-build
 WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
