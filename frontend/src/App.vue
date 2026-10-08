@@ -3,6 +3,9 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const path = ref(window.location.pathname)
+const isMobile = ref(window.matchMedia('(max-width: 767px)').matches)
+const isStandalone = ref(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true)
+const installPrompt = ref(null)
 const route = computed(() => path.value === '/login' ? 'login' : path.value === '/settings' ? 'settings' : 'dashboard')
 const runId = computed(() => path.value.match(/^\/runs\/(\d+)\/?$/)?.[1] || null)
 const state = reactive({
@@ -19,6 +22,8 @@ const settingsValues = reactive({})
 const settingsSaving = ref(false)
 let refreshTimer
 let qrTimer
+let mobileMediaQuery
+let appInstalledMediaQuery
 
 const statusLabels = { queued: '排队中', claimed: '已领取', running: '运行中', succeeded: '成功', failed: '失败', timeout: '超时', cancelled: '已取消' }
 const worker = computed(() => state.dashboard.workers?.find((item) => item.worker_type === 'starrail') || state.dashboard.workers?.[0])
@@ -68,6 +73,19 @@ function timeToCron(time) {
   return `${Number(minute)} ${Number(hour)} * * *`
 }
 function notify(message, type = 'success') { ElMessage({ message, type }) }
+function captureInstallPrompt(event) { event.preventDefault(); installPrompt.value = event }
+function onAppInstalled() { isStandalone.value = true; installPrompt.value = null }
+async function installApp() {
+  if (installPrompt.value) {
+    const prompt = installPrompt.value
+    installPrompt.value = null
+    await prompt.prompt()
+    return
+  }
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent) && !isStandalone.value
+  const message = isIos ? '在 Safari 中打开分享菜单，选择“添加到主屏幕”。' : '打开浏览器菜单，选择“安装应用”或“添加到主屏幕”。'
+  await ElMessageBox.alert(message, '安装 Game Savior', { confirmButtonText: '知道了' })
+}
 
 async function loadDashboard() {
   state.loading = true
@@ -152,9 +170,10 @@ function resetGroup() { for (const field of selectedGroup.value?.fields || []) s
 
 function navigateFromMenu(key) { navigate(key === 'settings' ? '/settings' : '/dashboard') }
 function onPopState() { path.value = window.location.pathname; checkSession() }
+function onMobileChange(event) { isMobile.value = event.matches }
 watch(route, async (value) => { if (value === 'settings') await loadSettings(); else if (value === 'dashboard') await loadDashboard() })
-onMounted(async () => { window.addEventListener('popstate', onPopState); await checkSession(); refreshTimer = window.setInterval(() => route.value === 'dashboard' && loadDashboard(), 15000); qrTimer = window.setInterval(() => route.value === 'dashboard' && loadQr(), 3000) })
-onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); clearInterval(refreshTimer); clearInterval(qrTimer) })
+onMounted(async () => { mobileMediaQuery = window.matchMedia('(max-width: 767px)'); mobileMediaQuery.addEventListener('change', onMobileChange); appInstalledMediaQuery = window.matchMedia('(display-mode: standalone)'); appInstalledMediaQuery.addEventListener('change', onAppInstalled); window.addEventListener('beforeinstallprompt', captureInstallPrompt); window.addEventListener('appinstalled', onAppInstalled); window.addEventListener('popstate', onPopState); await checkSession(); refreshTimer = window.setInterval(() => route.value === 'dashboard' && loadDashboard(), 15000); qrTimer = window.setInterval(() => route.value === 'dashboard' && loadQr(), 3000) })
+onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); window.removeEventListener('beforeinstallprompt', captureInstallPrompt); window.removeEventListener('appinstalled', onAppInstalled); mobileMediaQuery?.removeEventListener('change', onMobileChange); appInstalledMediaQuery?.removeEventListener('change', onAppInstalled); clearInterval(refreshTimer); clearInterval(qrTimer) })
 </script>
 
 <template>
@@ -171,13 +190,13 @@ onBeforeUnmount(() => { window.removeEventListener('popstate', onPopState); clea
       </el-card>
     </div>
 
-    <el-container v-else class="app-shell">
-      <el-header class="topbar"><div><p class="eyebrow">GAME SAVIOR</p><h1>{{ route === 'settings' ? '脚本设置' : '云端日常控制台' }}</h1></div><div class="topbar-actions"><span class="muted">{{ route === 'dashboard' ? `同步于 ${new Date().toLocaleTimeString('zh-CN', { hour12: false })}` : 'MARCH7THASSISTANT' }}</span><el-button text @click="logout">退出</el-button></div></el-header>
+    <el-container v-else :class="['app-shell', { 'is-mobile': isMobile }]">
+      <el-header class="topbar"><div><p class="eyebrow">GAME SAVIOR</p><h1>{{ route === 'settings' ? '脚本设置' : '云端日常控制台' }}</h1></div><div class="topbar-actions"><span class="muted sync-status">{{ route === 'dashboard' ? `同步于 ${new Date().toLocaleTimeString('zh-CN', { hour12: false })}` : 'MARCH7THASSISTANT' }}</span><el-button v-if="!isStandalone" text @click="installApp">安装到桌面</el-button><el-button text @click="logout">退出</el-button></div></el-header>
       <el-container>
-        <el-aside width="210px" class="sidebar"><p class="sidebar-title">NAVIGATION</p><el-menu :default-active="route" @select="navigateFromMenu"><el-menu-item index="dashboard">控制台</el-menu-item><el-menu-item index="settings">脚本设置</el-menu-item></el-menu></el-aside>
+        <el-aside width="210px" class="sidebar"><p class="sidebar-title">NAVIGATION</p><el-menu :mode="isMobile ? 'horizontal' : 'vertical'" :default-active="route" @select="navigateFromMenu"><el-menu-item index="dashboard">控制台</el-menu-item><el-menu-item index="settings">脚本设置</el-menu-item></el-menu></el-aside>
         <el-main class="main-content">
           <template v-if="route === 'dashboard'">
-            <el-row :gutter="12" class="status-strip"><el-col :xs="24" :sm="12" :md="6"><div class="status-item"><span class="status-dot online" /><div><span class="status-label">API</span><strong>在线</strong></div></div></el-col><el-col :xs="24" :sm="12" :md="6"><div class="status-item"><span :class="['status-dot', worker?.status === 'online' ? 'online' : 'offline']" /><div><span class="status-label">崩铁 Worker</span><strong>{{ worker?.status === 'online' ? '在线' : (worker?.status || '离线') }}</strong></div></div></el-col><el-col :xs="24" :sm="12" :md="6"><div class="status-item"><span class="status-dot accent" /><div><span class="status-label">启用游戏</span><strong>{{ starrail?.enabled ? '崩铁' : '无' }}</strong></div></div></el-col><el-col :xs="24" :sm="12" :md="6"><div class="status-item"><span class="status-dot accent" /><div><span class="status-label">崩铁登录</span><strong>{{ state.qr.available ? '待扫码' : (state.loginSwitch.status === 'pending' ? '切换中' : '未检测到二维码') }}</strong></div></div></el-col></el-row>
+            <el-row :gutter="12" class="status-strip"><el-col :xs="12" :sm="12" :md="6"><div class="status-item"><span class="status-dot online" /><div><span class="status-label">API</span><strong>在线</strong></div></div></el-col><el-col :xs="12" :sm="12" :md="6"><div class="status-item"><span :class="['status-dot', worker?.status === 'online' ? 'online' : 'offline']" /><div><span class="status-label">崩铁 Worker</span><strong>{{ worker?.status === 'online' ? '在线' : (worker?.status || '离线') }}</strong></div></div></el-col><el-col :xs="12" :sm="12" :md="6"><div class="status-item"><span class="status-dot accent" /><div><span class="status-label">启用游戏</span><strong>{{ starrail?.enabled ? '崩铁' : '无' }}</strong></div></div></el-col><el-col :xs="12" :sm="12" :md="6"><div class="status-item"><span class="status-dot accent" /><div><span class="status-label">崩铁登录</span><strong>{{ state.qr.available ? '待扫码' : (state.loginSwitch.status === 'pending' ? '切换中' : '未检测到二维码') }}</strong></div></div></el-col></el-row>
             <div class="action-row"><el-button type="primary" @click="taskDialog = true">＋ 运行崩铁日常</el-button><el-button @click="switchLogin">切换崩铁登录</el-button><el-button @click="testFeishu">测试飞书通知</el-button><el-button :loading="state.loading" @click="loadDashboard">刷新</el-button></div>
             <el-row :gutter="20" class="page-grid"><el-col :xs="24" :lg="16"><el-card v-if="state.qr.available" class="panel" shadow="never"><template #header><div class="panel-heading"><span>崩铁登录二维码</span><el-tag type="warning">待扫码</el-tag></div></template><div class="qr-content"><img :src="`/api/v1/starrail/login-qr?ts=${encodeURIComponent(state.qr.updated_at)}`" alt="崩铁云游戏登录二维码" /><div><p>扫码后服务器会保存登录状态，后续任务会自动复用。</p><p class="muted">生成于 {{ formatDate(state.qr.updated_at) }}，已存在 {{ state.qr.age_seconds }} 秒。</p><el-button class="qr-send" @click="sendQr">发送二维码到飞书</el-button></div></div></el-card><div class="section-heading"><div><p class="eyebrow">TASK CENTER</p><h2>任务</h2></div></div><el-card shadow="never"><el-table :data="state.tasks" v-loading="state.loading" empty-text="还没有运行记录"><el-table-column label="任务" min-width="190"><template #default="{ row }"><strong>崩铁日常 #{{ row.id }}</strong><div class="muted table-meta">{{ row.source || 'unknown' }} · {{ formatDate(row.created_at) }}</div></template></el-table-column><el-table-column label="状态" width="110"><template #default="{ row }"><el-tag :type="['succeeded'].includes(row.status) ? 'success' : ['failed', 'timeout'].includes(row.status) ? 'danger' : ['running', 'claimed'].includes(row.status) ? 'warning' : 'info'">{{ statusLabels[row.status] || row.status }}</el-tag></template></el-table-column><el-table-column label="计划时间" min-width="150"><template #default="{ row }">{{ formatDate(row.scheduled_for) }}</template></el-table-column><el-table-column label="操作" width="220" fixed="right"><template #default="{ row }"><el-button link type="primary" @click="openTask(row.id)">详情</el-button><el-button v-if="['queued', 'claimed', 'running'].includes(row.status)" link type="danger" @click="cancelTask(row)">取消</el-button><el-button v-if="['failed', 'timeout', 'cancelled'].includes(row.status)" link type="warning" @click="retryTask(row)">重试</el-button></template></el-table-column></el-table><div v-if="state.pagination.totalPages > 1" class="pagination"><span class="muted">共 {{ state.pagination.total }} 条</span><el-pagination background layout="prev, pager, next" :current-page="state.pagination.page" :page-size="state.pagination.pageSize" :total="state.pagination.total" @current-change="(page) => { state.pagination.page = page; loadDashboard() }" /></div></el-card></el-col><el-col :xs="24" :lg="8"><el-card class="panel" shadow="never"><template #header><div class="panel-heading"><span>崩铁运行设置</span><el-tag type="success">{{ state.config ? '已读取' : '读取中' }}</el-tag></div></template><el-form v-if="state.config" label-position="top" @submit.prevent="saveSchedule"><el-form-item label="每日时间"><el-time-picker v-model="state.config.schedule_time" format="HH:mm" value-format="HH:mm" /></el-form-item><el-form-item label="时区"><el-select v-model="state.config.timezone"><el-option label="Asia/Shanghai" value="Asia/Shanghai" /><el-option label="Asia/Singapore" value="Asia/Singapore" /><el-option label="UTC" value="UTC" /></el-select></el-form-item><el-form-item label="超时（分钟）"><el-input-number v-model="state.config.timeout_minutes" :min="1" :max="360" /></el-form-item><el-form-item label="失败重试次数"><el-input-number v-model="state.config.max_retries" :min="0" :max="5" /></el-form-item><el-form-item label="重试间隔（分钟）"><el-input-number v-model="state.config.retry_delay_minutes" :min="1" :max="1440" /></el-form-item><el-form-item label="截图策略"><el-select v-model="state.config.screenshot_policy"><el-option label="仅失败时" value="failure_only" /><el-option label="全部保存" value="all" /><el-option label="不保存" value="none" /></el-select></el-form-item><el-form-item label="启用每日自动运行"><el-switch v-model="state.config.enabled" /></el-form-item><el-button native-type="submit" class="full-width">保存运行设置</el-button></el-form></el-card><el-card class="panel" shadow="never"><template #header>执行节点</template><el-descriptions v-if="worker" :column="1" border><el-descriptions-item label="名称">{{ worker.name || worker.worker_key }}</el-descriptions-item><el-descriptions-item label="状态">{{ worker.status || 'unknown' }}</el-descriptions-item><el-descriptions-item label="最后心跳">{{ formatDate(worker.last_heartbeat_at) }}</el-descriptions-item><el-descriptions-item label="版本">{{ worker.version || '未提供' }}</el-descriptions-item></el-descriptions><span v-else class="muted">尚未注册 Worker</span></el-card></el-col></el-row>
           </template>
