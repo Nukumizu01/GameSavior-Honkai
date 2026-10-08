@@ -24,6 +24,8 @@ starrail/control/*
 !starrail/control/.gitkeep
 
 # Packages and temporary files
+frontend/node_modules/
+web/dist/
 *.zip
 *.tar
 *.tar.gz

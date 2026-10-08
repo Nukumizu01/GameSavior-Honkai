@@ -17,7 +17,11 @@ from app.scheduler import scheduler_loop
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title=settings.app_name, version="0.1.0")
-    web_dir = Path(__file__).parent.parent / "web"
+    web_root = Path(__file__).parent.parent / "web"
+    web_dir = web_root / "dist"
+    if not web_dir.is_dir():
+        web_dir = web_root
+    spa_entry = web_dir / "index.html"
 
     @app.on_event("startup")
     def _startup() -> None:
@@ -44,12 +48,12 @@ def create_app() -> FastAPI:
     def login_page(session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME)):
         if get_session_user(session_cookie):
             return RedirectResponse("/dashboard", status_code=303)
-        return FileResponse(web_dir / "login.html", headers={"Cache-Control": "no-store"})
+        return FileResponse(spa_entry, headers={"Cache-Control": "no-store"})
 
     @app.get("/dashboard", include_in_schema=False)
     def dashboard_page(session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME)):
         return (
-            FileResponse(web_dir / "index.html", headers={"Cache-Control": "no-store"})
+            FileResponse(spa_entry, headers={"Cache-Control": "no-store"})
             if get_session_user(session_cookie)
             else RedirectResponse("/login", status_code=303)
         )
@@ -58,7 +62,7 @@ def create_app() -> FastAPI:
     def settings_page(session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME)):
         return (
             FileResponse(
-                web_dir / "settings.html",
+                spa_entry,
                 headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
             )
             if get_session_user(session_cookie)
@@ -71,7 +75,7 @@ def create_app() -> FastAPI:
         session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
     ):
         return (
-            FileResponse(web_dir / "index.html", headers={"Cache-Control": "no-store"})
+            FileResponse(spa_entry, headers={"Cache-Control": "no-store"})
             if get_session_user(session_cookie)
             else RedirectResponse("/login", status_code=303)
         )
