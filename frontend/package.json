@@ -13,5 +13,10 @@
     "vite": "^6.2.6",
     "vue": "^3.5.13"
   },
+  "optionalDependencies": {
+    "@esbuild/linux-x64": "0.25.12",
+    "@rollup/rollup-linux-x64-gnu": "4.64.2",
+    "@rollup/rollup-linux-x64-musl": "4.64.2"
+  },
   "devDependencies": {}
 }
