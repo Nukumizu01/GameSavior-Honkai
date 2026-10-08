@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
 import os
+from pathlib import Path
 from typing import Any
 
 
@@ -30,44 +32,39 @@ def _instance_options() -> list[dict[str, str]]:
     return [{"label": value, "value": value} for value in values]
 
 
-_INSTANCE_NAME_OPTIONS: dict[str, list[str]] = {
-    "instance_name_calyx_golden": ["无", "回忆之蕾", "以太之蕾", "藏珍之蕾"],
-    "instance_name_calyx_crimson": [
-        "无", "收容舱段", "支援舱段", "城郊雪原", "边缘通路", "铆钉镇", "机械聚落",
-        "大矿区", "鳞渊境", "丹鼎司", "「白日梦」酒店-梦境", "绥园", "克劳克影视乐园",
-        "苏乐达™热砂海选会场", "匹诺康尼大剧院", "「纷争荒墟」悬锋城", "「世界尽头」酒馆",
-        "「葬忆彼岸」时光归墟", "「辉痕圣林」神悟树庭", "海原电视塔", "渡画泉隐",
-    ],
-    "instance_name_stagnant_shadow": [
-        "无", "空海之形", "巽风之形", "鸣雷之形", "炎华之形", "锋芒之形", "霜晶之形",
-        "幻光之形", "冰棱之形", "震厄之形", "偃偶之形", "孽兽之形", "天人之形", "幽府之形",
-        "燔灼之形", "冰酿之形", "焦炙之形", "嗔怒之形", "职司之形", "机狼之形", "今宵之形",
-        "弦音之形", "凛月之形", "役轮之形", "溟簇之形", "烬日之形", "塞壬之形", "残灰之形",
-        "音爆之形", "吞噬之形",
-    ],
-    "instance_name_cavern": [
-        "无", "霜风之径", "迅拳之径", "漂泊之径", "睿治之径", "圣颂之径", "野焰之径",
-        "药使之径", "幽冥之径", "梦潜之径", "勇骑之径", "迷识之径", "弦歌之径", "雳涌之径",
-        "隐救之径", "魔占之径", "观火之径",
-    ],
-    "instance_name_ornament": [
-        "无", "虫虫来袭", "鎏金追忆", "西风丛中", "月下朱殷", "纷争不休", "蠹役饥肠",
-        "永恒笑剧", "伴你入眠", "天剑如雨", "孽果盘生", "百年冻土", "温柔话语", "浴火钢心",
-        "坚城不倒",
-    ],
-    "instance_name_echo_of_war": [
-        "无", "坏灭的喜剧", "铁骸的锈冢", "晨昏的回眸", "心兽的战场", "尘梦的赞礼",
-        "蛀星的旧靥", "不死的神实", "寒潮的落幕", "毁灭的开端",
-    ],
+_INSTANCE_NAME_CONFIG_KEYS = {
+    "instance_name_calyx_golden": "拟造花萼（金）",
+    "instance_name_calyx_crimson": "拟造花萼（赤）",
+    "instance_name_stagnant_shadow": "凝滞虚影",
+    "instance_name_cavern": "侵蚀隧洞",
+    "instance_name_ornament": "饰品提取",
+    "instance_name_echo_of_war": "历战余响",
 }
 
 
+def _load_instance_names() -> dict[str, dict[str, str]]:
+    path = Path(__file__).parent / "assets" / "instance_names.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {
+        str(instance_type): {str(name): str(info) for name, info in names.items()}
+        for instance_type, names in data.items()
+        if isinstance(names, dict)
+    } if isinstance(data, dict) else {}
+
+
+_INSTANCE_NAMES = _load_instance_names()
+
+
 def _instance_name_options(key: str) -> list[dict[str, str]]:
-    configured = os.getenv(f"MARCH7TH_{key.upper()}_OPTIONS", "")
-    values = [item.strip() for item in configured.split(",") if item.strip()]
-    if not values:
-        values = _INSTANCE_NAME_OPTIONS[key]
-    return [{"label": value, "value": value} for value in values]
+    instance_type = _INSTANCE_NAME_CONFIG_KEYS[key]
+    names = _INSTANCE_NAMES.get(instance_type, {})
+    return [
+        {"label": f"{name}（{info}）" if info else name, "value": name}
+        for name, info in names.items()
+    ]
 
 
 def _field(
@@ -104,12 +101,48 @@ SCRIPT_SETTING_GROUPS: list[dict[str, Any]] = [
                 "侵蚀隧洞",
                 options=_instance_options(),
             ),
-            _field("instance_name_calyx_golden", "拟造花萼（金）副本", "select", "回忆之蕾", options=_instance_name_options("instance_name_calyx_golden")),
-            _field("instance_name_calyx_crimson", "拟造花萼（赤）副本", "select", "收容舱段", options=_instance_name_options("instance_name_calyx_crimson")),
-            _field("instance_name_stagnant_shadow", "凝滞虚影副本", "select", "无", options=_instance_name_options("instance_name_stagnant_shadow")),
-            _field("instance_name_cavern", "侵蚀隧洞副本", "select", "睿治之径", options=_instance_name_options("instance_name_cavern")),
-            _field("instance_name_ornament", "饰品提取副本", "select", "永恒笑剧", options=_instance_name_options("instance_name_ornament")),
-            _field("instance_name_echo_of_war", "历战余响副本", "select", "毁灭的开端", options=_instance_name_options("instance_name_echo_of_war")),
+            _field(
+                "instance_name_calyx_golden",
+                "拟造花萼（金）副本",
+                "select",
+                "回忆之蕾",
+                options=_instance_name_options("instance_name_calyx_golden"),
+            ),
+            _field(
+                "instance_name_calyx_crimson",
+                "拟造花萼（赤）副本",
+                "select",
+                "海原电视塔",
+                options=_instance_name_options("instance_name_calyx_crimson"),
+            ),
+            _field(
+                "instance_name_stagnant_shadow",
+                "凝滞虚影副本",
+                "select",
+                "无",
+                options=_instance_name_options("instance_name_stagnant_shadow"),
+            ),
+            _field(
+                "instance_name_cavern",
+                "侵蚀隧洞副本",
+                "select",
+                "睿治之径",
+                options=_instance_name_options("instance_name_cavern"),
+            ),
+            _field(
+                "instance_name_ornament",
+                "饰品提取副本",
+                "select",
+                "永恒笑剧",
+                options=_instance_name_options("instance_name_ornament"),
+            ),
+            _field(
+                "instance_name_echo_of_war",
+                "历战余响副本",
+                "select",
+                "毁灭的开端",
+                options=_instance_name_options("instance_name_echo_of_war"),
+            ),
             _field("tp_before_instance", "清体力前传送至任意锚点", "boolean", False),
             _field("use_reserved_trailblaze_power", "使用后备开拓力", "boolean", False),
             _field("use_fuel", "使用燃料", "boolean", False),
