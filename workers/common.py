@@ -430,6 +430,15 @@ class WorkerClient:
             self._write_login_switch_status(status)
             self.login_qr_signature = None
 
+    def _monitor_login_qr(self) -> None:
+        interval = max(1, min(self.poll_seconds, 5))
+        while True:
+            try:
+                self.process_login_qr()
+            except Exception as exc:
+                print(f"[worker] login QR monitor failed: {exc}")
+            time.sleep(interval)
+
     @staticmethod
     def _terminate_process_tree(proc: subprocess.Popen[str]) -> None:
         if proc.poll() is not None:
@@ -722,6 +731,11 @@ class WorkerClient:
     def run_forever(self) -> None:
         registered = False
         retry_delay = 1
+        threading.Thread(
+            target=self._monitor_login_qr,
+            name=f"{self.worker_key}-login-qr-monitor",
+            daemon=True,
+        ).start()
         while True:
             try:
                 if not registered:
@@ -730,7 +744,6 @@ class WorkerClient:
                     retry_delay = 1
                     print(f"[worker] registered as {self.worker_key}")
                 self.process_control_commands()
-                self.process_login_qr()
                 self.heartbeat()
                 job = self.next_job()
                 if job:
