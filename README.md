@@ -53,11 +53,29 @@ March7thAssistant 和云游戏可能受网络区域、上游版本以及账号�
 Ubuntu 或 Debian 新服务器可使用 Docker 官方安装脚本：
 
 ```bash
-curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker "$USER"
-newgrp docker
-docker version
-docker compose version
+sudo apt update
+
+#安装一些必要的依赖包，以便能够通过HTTPS使用APT
+sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
+
+#下载并添加中科大的GPG密钥：
+curl -fsSL https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+#中科大（USTC）镜像源:
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  
+ sudo apt update
+ 
+ sudo apt install -y docker-ce docker-ce-cli containerd.io
+ 
+ #配置加载 
+sudo systemctl daemon-reload 
+#启动服务 
+sudo systemctl start docker 
+#开启启动 
+sudo systemctl enable docker 
+#查看服务状态 
+sudo systemctl status docker 
 ```
 
 生产服务器也可以按 [Docker Engine 官方文档](https://docs.docker.com/engine/install/) 配置软件源安装。若使用云厂商提供的 Docker 应用镜像，可直接进入下一步。
@@ -65,13 +83,13 @@ docker compose version
 ### 2. 克隆并初始化
 
 ```bash
-git clone https://github.com/YOUR_NAME/game-savior.git
-cd game-savior
+git clone https://github.com/Nukumizu0-Honkai-Honkai.git
+cd GameSSavior-Honkai/
 chmod +x scripts/bootstrap.sh
 ./scripts/bootstrap.sh http://SERVER_IP:8080
 ```
 
-上传仓库后，请把 `YOUR_NAME/game-savior` 替换为真实 GitHub 仓库路径，把 `SERVER_IP` 替换为服务器公网 IP。
+把 `SERVER_IP` 替换为服务器公网 IP。
 
 初始化脚本会：
 
@@ -118,13 +136,31 @@ http://SERVER_IP:8080
 ```env
 DOMAIN=game.example.com
 APP_BASE_URL=https://game.example.com
-SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_SECURE=false
 HTTP_BIND=127.0.0.1
 ```
 
 在安全组开放 `80/TCP` 和 `443/TCP`，然后启动 HTTPS profile：
 
 ```bash
+
+sudo usermod -aG docker $USER
+#给 Docker 配置国内镜像源：
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json <<-'EOF'
+{
+  "registry-mirrors": [
+    "https://docker.1ms.run",
+    "https://docker.xuanyuan.me",
+    "https://docker.m.daocloud.io"
+  ]
+}
+EOF
+#重载配置并重启 Docker
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+
+#构建
 docker compose --profile https up -d --build
 ```
 
