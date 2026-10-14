@@ -301,6 +301,44 @@ input:focus, select:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px rgb
 .setting-toggle { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .setting-toggle > span { display: grid; gap: 5px; }
 .setting-toggle input { width: 18px; min-height: 18px; flex: 0 0 auto; accent-color: var(--cyan); }
+.setting-accordion {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #10181f;
+}
+.setting-accordion-heading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 68px;
+  padding: 13px 16px;
+}
+.setting-accordion-copy { display: grid; flex: 1; gap: 5px; min-width: 0; }
+.setting-accordion-copy strong { color: var(--text); font-size: 14px; font-weight: 650; }
+.setting-accordion-copy small { color: var(--muted); font-size: 11px; line-height: 1.45; }
+.setting-accordion-switch { display: flex; align-items: center; gap: 9px; color: var(--text); font-size: 13px; }
+.setting-accordion-switch input { width: 18px; min-height: 18px; accent-color: var(--cyan); }
+.setting-accordion-button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 19px;
+  transition: color .16s ease, background .16s ease, transform .16s ease;
+}
+.setting-accordion-button:hover { background: var(--surface-strong); color: var(--text); }
+.setting-accordion-button span { display: block; transition: transform .16s ease; }
+.setting-accordion-button[aria-expanded="true"] span { transform: rotate(180deg); }
+.setting-accordion-panel { padding: 14px 16px 16px; border-top: 1px solid var(--line); }
+.setting-accordion-panel[hidden] { display: none; }
+.setting-accordion-panel .settings-field-grid { gap: 10px 12px; }
+.settings-independent-fields { grid-column: 1 / -1; }
 .settings-footer { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 18px 0 0; }
 
 .toast { position: fixed; right: 22px; bottom: 22px; z-index: 10; max-width: min(420px, calc(100vw - 44px)); padding: 12px 14px; border: 1px solid var(--cyan); background: #102a2d; color: var(--text); box-shadow: var(--shadow); transform: translateY(20px); opacity: 0; pointer-events: none; transition: opacity .18s ease, transform .18s ease; }
@@ -341,6 +379,9 @@ input:focus, select:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px rgb
   .pagination-actions { justify-content: space-between; }
   .form-grid, .detail-summary { grid-template-columns: 1fr; }
   .settings-field-grid { grid-template-columns: 1fr; }
+  .setting-accordion-heading { gap: 10px; padding: 12px; }
+  .setting-accordion-panel { padding: 12px; }
+  .setting-accordion-switch { gap: 5px; }
   .settings-group-heading { flex-direction: column; }
   .settings-group-heading .muted { text-align: left; }
   .settings-toolbar-actions, .settings-footer { align-items: stretch; flex-direction: column; }

@@ -3,6 +3,35 @@ const state = {
   schema: null,
   values: {},
   selectedGroupKey: null,
+  expandedSettings: new Set(),
+};
+
+const SETTINGS_ACCORDIONS = {
+  power: [
+    { key: "power_enable", match: () => true },
+  ],
+  daily: [
+    { key: "daily_enable", match: (key) => key.startsWith("daily_") },
+    { key: "reward_enable", match: (key) => key.startsWith("reward_") },
+    { key: "activity_enable", match: (key) => key.startsWith("activity_") },
+    { key: "asset_manager_enable", match: (key) => key.startsWith("asset_") },
+  ],
+  currencywars: [
+    { key: "currencywars_enable", match: (key) => key.startsWith("currencywars_") },
+  ],
+  universe: [
+    { key: "weekly_divergent_enable", match: (key) => key.startsWith("weekly_divergent_") },
+    { key: "universe_enable", match: (key) => key.startsWith("universe_") },
+  ],
+  fight: [
+    { key: "fight_enable", match: (key) => key.startsWith("fight_") },
+  ],
+  cloud: [
+    { key: "cloud_game_enable", match: (key) => key.startsWith("cloud_game_") || key.startsWith("browser_") },
+  ],
+  notification: [
+    { key: "notification_enable", match: (key) => key.startsWith("notify_") },
+  ],
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -89,6 +118,58 @@ function renderField(field, values) {
   `;
 }
 
+function renderAccordion(field, children) {
+  const id = `settings-panel-${field.key}`;
+  const expanded = state.expandedSettings.has(field.key);
+  const value = Boolean(state.values[field.key] ?? field.default);
+  return `
+    <section class="setting-accordion ${expanded ? "is-expanded" : ""}">
+      <div class="setting-accordion-heading">
+        <div class="setting-accordion-copy">
+          <strong>${escapeHtml(field.label)}</strong>
+          ${field.description ? `<small>${escapeHtml(field.description)}</small>` : ""}
+        </div>
+        <label class="setting-accordion-switch" for="${fieldId(field.key)}">
+          <span>${value ? "开" : "关"}</span>
+          <input id="${fieldId(field.key)}" data-setting-key="${escapeHtml(field.key)}" data-setting-type="boolean" type="checkbox" ${value ? "checked" : ""} />
+        </label>
+        <button class="setting-accordion-button" type="button" data-settings-accordion="${escapeHtml(field.key)}"
+          aria-expanded="${expanded}" aria-controls="${id}" aria-label="${expanded ? "收起" : "展开"}${escapeHtml(field.label)}设置">
+          <span aria-hidden="true">⌄</span>
+        </button>
+      </div>
+      <div id="${id}" class="setting-accordion-panel" ${expanded ? "" : "hidden"}>
+        <div class="settings-field-grid">
+          ${children.map((child) => renderField(child, state.values)).join("")}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderGroupFields(group) {
+  const fields = group.fields || [];
+  const definitions = SETTINGS_ACCORDIONS[group.key] || [];
+  const consumed = new Set();
+  const accordions = definitions.flatMap((definition) => {
+    const field = fields.find((item) => item.key === definition.key);
+    if (!field) return [];
+    consumed.add(field.key);
+    const children = fields.filter((item) => item.key !== field.key && definition.match(item.key));
+    for (const child of children) consumed.add(child.key);
+    return [renderAccordion(field, children)];
+  });
+  const remaining = fields.filter((field) => !consumed.has(field.key));
+  if (remaining.length) {
+    accordions.push(`
+      <div class="settings-field-grid settings-independent-fields">
+        ${remaining.map((field) => renderField(field, state.values)).join("")}
+      </div>
+    `);
+  }
+  return accordions.join("");
+}
+
 function groupByKey(key) {
   return (state.schema?.groups || []).find((group) => group.key === key)
     || state.schema?.groups?.[0]
@@ -136,7 +217,7 @@ function renderSelectedGroup() {
         <span class="muted">${escapeHtml(group.description || "")}</span>
       </div>
       <div class="settings-field-grid">
-        ${(group.fields || []).map((field) => renderField(field, state.values)).join("")}
+        ${renderGroupFields(group)}
       </div>
     </section>
   `;
@@ -286,6 +367,27 @@ $("#settings-nav-toggle").addEventListener("click", () => {
 $("#settings-directory").addEventListener("click", (event) => {
   const button = event.target.closest("[data-settings-group]");
   if (button) selectGroup(button.dataset.settingsGroup);
+});
+
+$("#script-settings-groups").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-settings-accordion]");
+  if (!button) return;
+  const key = button.dataset.settingsAccordion;
+  const expanded = state.expandedSettings.has(key);
+  if (expanded) state.expandedSettings.delete(key);
+  else state.expandedSettings.add(key);
+  const panel = document.getElementById(button.getAttribute("aria-controls"));
+  button.setAttribute("aria-expanded", String(!expanded));
+  button.setAttribute("aria-label", `${expanded ? "展开" : "收起"}${groupByKey(state.selectedGroupKey)?.fields.find((field) => field.key === key)?.label || "设置"}设置`);
+  button.closest(".setting-accordion").classList.toggle("is-expanded", !expanded);
+  if (panel) panel.hidden = expanded;
+});
+
+$("#script-settings-groups").addEventListener("change", (event) => {
+  const input = event.target.closest(".setting-accordion-switch input");
+  if (!input) return;
+  const status = input.closest(".setting-accordion-switch")?.querySelector("span");
+  if (status) status.textContent = input.checked ? "开" : "关";
 });
 
 window.addEventListener("hashchange", () => {
