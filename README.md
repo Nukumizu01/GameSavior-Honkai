@@ -83,8 +83,8 @@ sudo systemctl status docker
 ### 2. 克隆并初始化
 
 ```bash
-git clone https://github.com/Nukumizu0-Honkai-Honkai.git
-cd GameSSavior-Honkai/
+git clone https://github.com/Nukumizu01/GameSavior-Honkai.git
+cd GameSavior-Honkai/
 chmod +x scripts/bootstrap.sh
 ./scripts/bootstrap.sh http://SERVER_IP:8080
 ```

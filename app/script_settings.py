@@ -167,7 +167,7 @@ SCRIPT_SETTING_GROUPS: list[dict[str, Any]] = [
     {
         "key": "daily",
         "title": "日常",
-        "description": "每日实训、奖励领取与活动检查。",
+        "description": "每日实训、奖励领取、活动检查与资产管理。",
         "fields": [
             _field("daily_enable", "启用每日实训", "boolean", True),
             _field("daily_material_enable", "通过合成材料完成任务", "boolean", True),
@@ -187,6 +187,48 @@ SCRIPT_SETTING_GROUPS: list[dict[str, Any]] = [
             _field("activity_gardenofplenty_enable", "花藏繁生", "boolean", False),
             _field("activity_realmofthestrange_enable", "异器盈界", "boolean", False),
             _field("activity_planarfissure_enable", "位面分裂", "boolean", False),
+            _field(
+                "asset_manager_enable",
+                "启用资产管理",
+                "boolean",
+                False,
+                "开启后，任务会执行下方已启用的资产管理功能。",
+            ),
+            _field(
+                "asset_self_molding_resin_enable",
+                "启用「每月自动合成自塑尘脂」",
+                "boolean",
+                False,
+                "每月尝试合成 2 个自塑尘脂，成功后记录完成时间。",
+            ),
+            _field(
+                "asset_ember_special_pass_enable",
+                "启用「每月自动购买星轨专票」",
+                "boolean",
+                False,
+                "每月尝试在余烬兑换中购买星轨专票，并在购买成功后记录完成时间。",
+            ),
+            _field(
+                "asset_ember_regular_pass_enable",
+                "启用「每月自动购买星轨通票」",
+                "boolean",
+                False,
+                "每月尝试在余烬兑换中购买星轨通票，并在购买成功后记录完成时间。",
+            ),
+            _field(
+                "asset_ember_tracks_of_destiny_enable",
+                "启用「每月自动购买命运的足迹」",
+                "boolean",
+                False,
+                "每月尝试在余烬兑换中购买命运的足迹，并在购买成功后记录完成时间。",
+            ),
+            _field(
+                "asset_lc3_star_superimpose_enable",
+                "启用「3星光锥自动叠加」",
+                "boolean",
+                False,
+                "自动叠加三星光锥以节省背包空间。",
+            ),
         ],
     },
     {
