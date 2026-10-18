@@ -12,6 +12,7 @@ if ! flock -n 9; then
 fi
 
 PAUSE_FILE="$PROJECT_ROOT/starrail/control/.pause-for-march7th-update"
+UPSTREAM_DIGEST_FILE="$PROJECT_ROOT/starrail/control/march7th-image.digest"
 DRAIN_TIMEOUT_SECONDS="${UPDATE_DRAIN_TIMEOUT_SECONDS:-21600}"
 
 active_run_count() {
@@ -42,25 +43,44 @@ connection.close()
 ' | tr -d '[:space:]'
 }
 
-echo "Checking the March7thAssistant image configured for this deployment..."
-worker_image_ref="$(docker compose config --format json | python3 -c 'import json, sys; print(json.load(sys.stdin)["services"]["starrail-worker"]["image"])')"
-worker_container="$(docker compose ps -q starrail-worker)"
-before_image=""
-if [[ -n "$worker_container" ]]; then
-    before_image="$(docker inspect "$worker_container" --format '{{.Image}}')"
-fi
-docker compose build --pull --quiet starrail-worker
-after_image="$(docker image inspect "$worker_image_ref" --format '{{.Id}}')"
+worker_registration() {
+    docker compose exec -T api python -c '
+from app.db import connect
+connection = connect()
+row = connection.execute(
+    "SELECT status, updated_at FROM workers WHERE worker_key = ?",
+    ("starrail-01",),
+).fetchone()
+if row:
+    print("{}|{}".format(row["status"], row["updated_at"]))
+else:
+    print("")
+connection.close()
+' | tr -d '[:space:]'
+}
 
-if [[ "$before_image" == "$after_image" ]]; then
-    echo "March7thAssistant image is unchanged."
+echo "Checking the March7thAssistant image configured for this deployment..."
+march7th_image_ref="$(docker compose config --format json | python3 -c 'import json, sys; print(json.load(sys.stdin)["services"]["starrail-worker"]["build"]["args"]["MARCH7TH_IMAGE"])')"
+docker pull "$march7th_image_ref"
+upstream_digest="$(docker image inspect "$march7th_image_ref" --format '{{index .RepoDigests 0}}')"
+if [[ -z "$upstream_digest" ]]; then
+    echo "Could not determine the March7thAssistant registry digest." >&2
+    exit 1
+fi
+
+last_digest="$(cat "$UPSTREAM_DIGEST_FILE" 2>/dev/null || true)"
+if [[ "$last_digest" == "$upstream_digest" ]]; then
+    echo "March7thAssistant image is unchanged ($upstream_digest)."
     exit 0
 fi
+
+docker compose build --pull --quiet starrail-worker
 
 if [[ "$(worker_supports_pause)" != "true" ]]; then
     echo "The running Worker does not support safe update pausing. Deploy the current Game Savior Worker once before enabling scheduled updates." >&2
     exit 1
 fi
+previous_registration="$(worker_registration)"
 
 mkdir -p "$(dirname "$PAUSE_FILE")"
 touch "$PAUSE_FILE"
@@ -82,4 +102,20 @@ done
 
 echo "Updating the starrail-worker container..."
 docker compose up -d --no-deps starrail-worker
+registered=false
+for _ in {1..60}; do
+    current_registration="$(worker_registration)"
+    if [[ "$current_registration" == online\|* && "$current_registration" != "$previous_registration" ]]; then
+        registered=true
+        break
+    fi
+    sleep 2
+done
+if [[ "$registered" != "true" ]]; then
+    echo "Updated Worker did not register with the API; the next timer run will retry." >&2
+    exit 1
+fi
+
+printf '%s\n' "$upstream_digest" > "$UPSTREAM_DIGEST_FILE.tmp"
+mv "$UPSTREAM_DIGEST_FILE.tmp" "$UPSTREAM_DIGEST_FILE"
 echo "March7thAssistant Worker update completed."
