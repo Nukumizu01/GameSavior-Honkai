@@ -44,7 +44,11 @@ connection.close()
 
 echo "Checking the March7thAssistant image configured for this deployment..."
 worker_image_ref="$(docker compose config --format json | python3 -c 'import json, sys; print(json.load(sys.stdin)["services"]["starrail-worker"]["image"])')"
-before_image="$(docker image inspect "$worker_image_ref" --format '{{.Id}}' 2>/dev/null || true)"
+worker_container="$(docker compose ps -q starrail-worker)"
+before_image=""
+if [[ -n "$worker_container" ]]; then
+    before_image="$(docker inspect "$worker_container" --format '{{.Image}}')"
+fi
 docker compose build --pull --quiet starrail-worker
 after_image="$(docker image inspect "$worker_image_ref" --format '{{.Id}}')"
 
