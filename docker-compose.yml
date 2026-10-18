@@ -27,6 +27,7 @@ services:
     restart: unless-stopped
 
   starrail-worker:
+    image: ${STARRAIL_WORKER_IMAGE:-gamesavior-honkai-starrail-worker:latest}
     build:
       context: .
       dockerfile: Dockerfile.starrail-worker

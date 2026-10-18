@@ -130,9 +130,17 @@ class WorkerClient:
                 "name": self.name,
                 "worker_type": self.worker_type,
                 "version": "0.1.0",
-                "capabilities": {"command_configured": bool(self.command)},
+                "capabilities": {
+                    "command_configured": bool(self.command),
+                    "pause_for_update": self.control_dir is not None,
+                },
             },
         )
+
+    def update_pause_requested(self) -> bool:
+        if self.control_dir is None:
+            return False
+        return (self.control_dir / ".pause-for-march7th-update").is_file()
 
     def heartbeat(self, current_run_id: int | None = None) -> None:
         self._post(
@@ -734,6 +742,7 @@ class WorkerClient:
     def run_forever(self) -> None:
         registered = False
         retry_delay = 1
+        update_paused = False
         threading.Thread(
             target=self._monitor_login_qr,
             name=f"{self.worker_key}-login-qr-monitor",
@@ -748,6 +757,15 @@ class WorkerClient:
                     print(f"[worker] registered as {self.worker_key}")
                 self.process_control_commands()
                 self.heartbeat()
+                if self.update_pause_requested():
+                    if not update_paused:
+                        print("[worker] pausing task claims for March7thAssistant update")
+                        update_paused = True
+                    time.sleep(self.poll_seconds)
+                    continue
+                if update_paused:
+                    print("[worker] resuming task claims after March7thAssistant update")
+                    update_paused = False
                 job = self.next_job()
                 if job:
                     run_id = int(job["run_id"])

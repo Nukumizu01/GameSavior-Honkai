@@ -223,13 +223,30 @@ docker compose logs -f starrail-worker
 
 # 更新代码并重建
 git pull --ff-only
-docker compose up -d --build
+docker compose build --pull
+docker compose up -d
 
 # 重启 Worker
 docker compose restart starrail-worker
 
 # 停止服务但保留数据
 docker compose down
+```
+
+### 自动更新 March7thAssistant
+
+Worker 镜像基于 `MARCH7TH_IMAGE` 配置的 March7thAssistant 容器镜像构建。安装定时器后，服务器每 6 小时检查一次上游镜像；只有镜像有变化时才更新 Worker。更新时 Worker 会暂停领取新任务，等待正在执行的星铁任务结束后再替换容器。
+
+```bash
+# 在仓库根目录安装系统级定时器
+sudo bash scripts/install-march7th-update-timer.sh
+
+# 查看定时器和最近一次更新检查
+sudo systemctl list-timers gamesavior-march7th-update.timer
+sudo journalctl -u gamesavior-march7th-update.service -n 100 --no-pager
+
+# 停用自动更新
+sudo systemctl disable --now gamesavior-march7th-update.timer
 ```
 
 不要使用 `docker compose down -v`，除非明确准备删除 Caddy 证书数据。项目运行数据保存在宿主机目录，删除 `data/` 或 `starrail/UserProfile/` 会分别丢失控制台记录或云游戏登录状态。
